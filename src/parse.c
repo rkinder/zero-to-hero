@@ -59,9 +59,9 @@ int output_file(int fd, struct dbheader_t *dbhdr, struct employee_t *employees) 
 
     // pack to network byte order
     dbhdr->magic = htonl(dbhdr->magic);
-    dbhdr->filesize = htonl(dbhdr->filesize);
     dbhdr->version = htons(dbhdr->version);
     dbhdr->count = htons(dbhdr->count);
+    dbhdr->filesize = htonl(dbhdr->filesize);
 
     lseek(fd, 0, SEEK_SET);
 
@@ -88,13 +88,13 @@ int validate_db_header(int fd, struct dbheader_t **headerOut) {
     }
 
     // unpack to host (little) endian -- data always stored in network (big) endian
+    header->magic = ntohl(header->magic);
     header->version = ntohs(header->version);
     header->count = ntohs(header->count);
-    header->magic = ntohl(header->magic);
     header->filesize = ntohl(header->filesize);
 
     if (header->version != 1) {
-        printf("Bad database version.\n");
+        printf("Bad database version. (%d)\n",header->version);
         free(header);
         return STATUS_ERROR;
     }
