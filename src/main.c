@@ -12,53 +12,107 @@ void print_usage(char *argv[]) {
 }
 
 int main(int argc, char *argv[]) { 
-
-    int c = 0;
+	int c = 0;
+    bool newfile = false;
+    bool list = false;
     char *filepath = NULL;
     char *portarg = NULL;
-    bool newfile = false;
-    bool userlist = false;
+    char *addstring = NULL;
     unsigned short port = 0;
 
     int dbfd = -1;
+    struct dbheader_t *dbheader = NULL;
+    struct employee_t *employees = NULL;
 
-    if (argc == 1){
+    if (argc == 1 ) {
         print_usage(argv);
         return 0;
     }
 
-    while((c = getopt(argc, argv, "nf:")) != -1) {
-        switch(c) {
+    while ((c = getopt(argc, argv, "nf:a:l")) != -1) {
+        switch (c) {
+            case 'f':
+                /* support custom file paths */
+                filepath = optarg;
+                break;
             case 'n':
                 /* support creating a new file */
                 newfile = true;
                 break;
-            case 'f':
-                /* support a custom path*/
-                filepath = optarg;
+            case 'p':
+                /* support listening on a custom port */
+                portarg = optarg;
+                break;
+            case 'l':
+                /* support listing all contents*/
+                list = true;
+                break;
+            case 'a':
+                /* add a record from the cli */
+                addstring = optarg;
                 break;
             case '?':
-                printf("Unsupported option -%c\n",c);
-                print_usage(argv);
+                /* undefined argument flags*/
+                printf("Unknown option -%c\n", c);
                 break;
             default:
+                printf("Cannot parse options.\n");
                 return -1;
         }
     }
 
     if (filepath == NULL) {
-        printf("Filepath is a required argument.\n");
+        printf("Filepath is a required argument\n");
         print_usage(argv);
 
         return 0;
     }
 
     if (newfile) {
-        // create a new database file
         dbfd = create_db_file(filepath);
+        if (dbfd == STATUS_ERROR ) {
+            printf("Could not create database file: %s\n", filepath);
+            return -1;
+        }
+
+        if (create_db_header(dbfd, &dbheader) == STATUS_ERROR){
+            printf("Failed to create database header.\n");
+            return -1;
+        }
+
+    } else {
+        dbfd = open_db_file(filepath);
+        if (dbfd == STATUS_ERROR ) {
+            printf("Could not open database file: %s\n", filepath);
+            return -1;
+        }
+
+        if (validate_db_header(dbfd, &dbheader) == STATUS_ERROR) {
+            printf("Error validating the database file header.\n");
+            return -1;
+        }
     }
 
-    printf("New file: %d\n", newfile);
-    printf("File path: %s\n", filepath);
-	
+    if (output_file(dbfd, dbheader, employees) == STATUS_ERROR) {
+        printf("Error writing database to disk.\n");
+        return -1;
+    } 
+
+    if (read_employees(dbfd, dbheader, &employees) != STATUS_SUCCESS) {
+        printf("Failed to read employees.\n");
+        return 0;
+    }
+
+    if (addstring) {
+        // modify the header and reallocate the size of the new list of employees
+        // prior to calling the function add_employee
+        dbheader->count++;
+        realloc(employees, dbheader->count*(sizeof(struct employee_t)));
+        add_employee(dbheader, employees, addstring);
+    }
+
+    output_file(dbfd, dbheader, employees);
+    dbfd = close_db_file(dbfd);
+
+    return 0;
 }

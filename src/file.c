@@ -10,11 +10,36 @@
 
 
 int create_db_file(char *filename) {
+    // printf("create_db_file: called\n");
+    int fd = open(filename, O_RDONLY);
+    if (fd != -1){
+        close(fd);
+        printf("File already exists\n");
+        return STATUS_ERROR;
+    }
 
+    fd = open(filename, O_RDWR | O_CREAT, 0644);
+    if (fd == -1) {
+        perror("create_db_file: open");
+        return STATUS_ERROR;
+    }
+
+    return fd;
 }
 
 int open_db_file(char *filename) {
+    // printf("open_db_file: called\n");
+    int fd = open(filename, O_RDWR);
+    if (fd == -1) {
+        perror("open_db_file: open");
+        return STATUS_ERROR;
+    }
+    return fd;
+}
 
+int close_db_file(int fd) {
+    close(fd);
+    return fd;
 }
 
 
