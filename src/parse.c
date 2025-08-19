@@ -56,6 +56,8 @@ int output_file(int fd, struct dbheader_t *dbhdr, struct employee_t *employees) 
         printf("Database FD is not valid\n");
         return STATUS_ERROR;
     }
+    // calculate the projected filesize and put it in dbhdr->filesize
+    dbhdr->filesize = sizeof(struct dbheader_t) + (dbhdr->count * sizeof(struct employee_t));
 
     // pack to network byte order
     dbhdr->magic = htonl(dbhdr->magic);
@@ -66,6 +68,11 @@ int output_file(int fd, struct dbheader_t *dbhdr, struct employee_t *employees) 
     lseek(fd, 0, SEEK_SET);
 
     write(fd, dbhdr, sizeof(struct dbheader_t));
+    for (int i = 0; i < dbhdr->count; i++) {
+	    employees[i].hours = htonl(employees[i].hours);
+    }
+    write(fd, employees, dbhdr->count * sizeof(struct employee_t));
+
     return STATUS_SUCCESS;
 }	
 
@@ -74,6 +81,10 @@ int validate_db_header(int fd, struct dbheader_t **headerOut) {
         printf("Database FD is not valid\n");
         return STATUS_ERROR;
     }
+
+    // We have a good file descriptor, but need to always read
+    // the beginning of the file
+    lseek(fd, 0, SEEK_SET);
 
     struct dbheader_t *header = calloc(1, sizeof(struct dbheader_t));
     if (header == NULL) {
