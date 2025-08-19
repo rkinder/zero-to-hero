@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        if (create_db_header(dbfd, &dbheader) == STATUS_ERROR){
+        if (create_db_header(&dbheader) == STATUS_ERROR){
             printf("Failed to create database header.\n");
             return -1;
         }
@@ -90,26 +90,12 @@ int main(int argc, char *argv[]) {
             printf("Could not open database file: %s\n", filepath);
             return -1;
         }
-        if (validate_db_header(dbfd, &dbheader) == STATUS_ERROR) {
-            printf("Error validating the database file header.\n");
+        
+        // Load existing database (header + employees) in host endianness
+        if (load_database(dbfd, &dbheader, &employees) != STATUS_SUCCESS) {
+            printf("Failed to load database.\n");
             return -1;
         }
-
-        if (read_employees(dbfd, dbheader, &employees) != STATUS_SUCCESS) {
-            printf("Failed to read employees.\n");
-            return 0;
-        }
-    }
-
-    // Re-read to get back to correct endianness in memory
-    if (validate_db_header(dbfd, &dbheader) == STATUS_ERROR) {
-        printf("Error validating the database file header.\n");
-        return -1;
-    }
-
-    if (read_employees(dbfd, dbheader, &employees) != STATUS_SUCCESS) {
-        printf("Failed to read employees.\n");
-        return 0;
     }
 
     if (addstring) {
