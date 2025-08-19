@@ -6,7 +6,7 @@ run: clean default
 	./$(TARGET) -f ./mynewdb.db -n 
 	./$(TARGET) -f ./mynewdb.db -a "Timmy H.,123 Sheshire Ln.,120"
 
-default: $(TARGET)
+default: $(TARGET)	
 
 clean:
 	rm -f obj/*.o
@@ -14,9 +14,9 @@ clean:
 	rm -f *.db
 
 $(TARGET): $(OBJ)
-	gcc -o $@ $?
+	gcc -g -o $@ $?
 
 obj/%.o : src/%.c
-	gcc -c $< -o $@ -Iinclude
+	gcc -g -c $< -o $@ -Iinclude
 
 

@@ -51,6 +51,9 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# valgrind cores
+vgcore.*
+
 # debug information files
 *.dwo
 
