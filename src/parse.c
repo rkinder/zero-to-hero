@@ -37,7 +37,7 @@ int read_employees(int fd, struct dbheader_t *dbhdr, struct employee_t **employe
     int count = dbhdr->count;
 
     struct employee_t *employees = calloc(count, sizeof(struct employee_t));
-    if (employees == -1) {
+    if (employees == NULL) {
         printf("Malloc failed to create employees structure.\n");
         return STATUS_ERROR;
     }
@@ -76,7 +76,7 @@ int validate_db_header(int fd, struct dbheader_t **headerOut) {
     }
 
     struct dbheader_t *header = calloc(1, sizeof(struct dbheader_t));
-    if (header == -1) {
+    if (header == NULL) {
         printf("Malloc failed to create a db header\n");
         return STATUS_ERROR;
     }   
@@ -120,7 +120,7 @@ int validate_db_header(int fd, struct dbheader_t **headerOut) {
 
 int create_db_header(int fd, struct dbheader_t **headerOut) {
     struct dbheader_t *header = calloc(1, sizeof(struct dbheader_t));
-    if (header == -1) {
+    if (header == NULL) {
         printf("Malloc failed to create db header\n");
         return STATUS_ERROR;
     }

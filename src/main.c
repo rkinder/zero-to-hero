@@ -80,37 +80,47 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
+        if (output_file(dbfd, dbheader, employees) == STATUS_ERROR) {
+            printf("Error writing database to disk.\n");
+            return -1;
+        } 
     } else {
         dbfd = open_db_file(filepath);
         if (dbfd == STATUS_ERROR ) {
             printf("Could not open database file: %s\n", filepath);
             return -1;
         }
-
         if (validate_db_header(dbfd, &dbheader) == STATUS_ERROR) {
             printf("Error validating the database file header.\n");
             return -1;
         }
+
+        if (read_employees(dbfd, dbheader, &employees) != STATUS_SUCCESS) {
+            printf("Failed to read employees.\n");
+            return 0;
+        }
     }
 
-    if (output_file(dbfd, dbheader, employees) == STATUS_ERROR) {
-        printf("Error writing database to disk.\n");
+    //Revalidate header and restore endianess
+    if (validate_db_header(dbfd, &dbheader) == STATUS_ERROR) {
+        printf("Error validating the database file header.\n");
         return -1;
-    } 
-
-    if (read_employees(dbfd, dbheader, &employees) != STATUS_SUCCESS) {
-        printf("Failed to read employees.\n");
-        return 0;
     }
 
     if (addstring) {
         // modify the header and reallocate the size of the new list of employees
         // prior to calling the function add_employee
         dbheader->count++;
-        realloc(employees, dbheader->count*(sizeof(struct employee_t)));
+        employees = realloc(employees, dbheader->count*(sizeof(struct employee_t)));
+	if (employees == NULL) {
+		printf("Failed to realloc memory for employees\n");
+		return -1;
+	}
+
         add_employee(dbheader, employees, addstring);
     }
 
+    // closing routine -- flush to disk
     output_file(dbfd, dbheader, employees);
     dbfd = close_db_file(dbfd);
 
