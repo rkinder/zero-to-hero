@@ -56,22 +56,52 @@ int output_file(int fd, struct dbheader_t *dbhdr, struct employee_t *employees) 
         printf("Database FD is not valid\n");
         return STATUS_ERROR;
     }
-    // calculate the projected filesize and put it in dbhdr->filesize
-    dbhdr->filesize = sizeof(struct dbheader_t) + (dbhdr->count * sizeof(struct employee_t));
 
-    // pack to network byte order
-    dbhdr->magic = htonl(dbhdr->magic);
-    dbhdr->version = htons(dbhdr->version);
-    dbhdr->count = htons(dbhdr->count);
-    dbhdr->filesize = htonl(dbhdr->filesize);
+    // Calculate the projected filesize
+    unsigned int filesize = sizeof(struct dbheader_t) + (dbhdr->count * sizeof(struct employee_t));
+
+    // Create copies for network endianness conversion (don't modify originals)
+    struct dbheader_t header_copy = *dbhdr;
+    header_copy.filesize = filesize;
+    
+    // Convert header copy to network byte order
+    header_copy.magic = htonl(header_copy.magic);
+    header_copy.version = htons(header_copy.version);
+    header_copy.count = htons(header_copy.count);
+    header_copy.filesize = htonl(header_copy.filesize);
 
     lseek(fd, 0, SEEK_SET);
 
-    write(fd, dbhdr, sizeof(struct dbheader_t));
-    for (int i = 0; i < dbhdr->count; i++) {
-	    employees[i].hours = htonl(employees[i].hours);
+    // Write header
+    if (write(fd, &header_copy, sizeof(struct dbheader_t)) != sizeof(struct dbheader_t)) {
+        printf("Failed to write database header.\n");
+        return STATUS_ERROR;
     }
-    write(fd, employees, dbhdr->count * sizeof(struct employee_t));
+
+    // Write employees if any exist
+    if (dbhdr->count > 0 && employees != NULL) {
+        // Create a copy of employees for endianness conversion
+        struct employee_t *employees_copy = calloc(dbhdr->count, sizeof(struct employee_t));
+        if (employees_copy == NULL) {
+            printf("Failed to allocate memory for employees copy.\n");
+            return STATUS_ERROR;
+        }
+
+        // Copy employees and convert to network endianness
+        for (int i = 0; i < dbhdr->count; i++) {
+            employees_copy[i] = employees[i];  // Copy name and address
+            employees_copy[i].hours = htonl(employees[i].hours);  // Convert hours
+        }
+
+        if (write(fd, employees_copy, dbhdr->count * sizeof(struct employee_t)) != 
+            dbhdr->count * sizeof(struct employee_t)) {
+            printf("Failed to write employees to database.\n");
+            free(employees_copy);
+            return STATUS_ERROR;
+        }
+
+        free(employees_copy);
+    }
 
     return STATUS_SUCCESS;
 }	
@@ -127,6 +157,83 @@ int validate_db_header(int fd, struct dbheader_t **headerOut) {
     *headerOut = header;
     return STATUS_SUCCESS;
 
+}
+
+int load_database(int fd, struct dbheader_t **headerOut, struct employee_t **employeesOut) {
+    if (fd < 0) {
+        printf("Database FD is not valid\n");
+        return STATUS_ERROR;
+    }
+
+    // Read and validate header
+    lseek(fd, 0, SEEK_SET);
+    
+    struct dbheader_t *header = calloc(1, sizeof(struct dbheader_t));
+    if (header == NULL) {
+        printf("Malloc failed to create a db header\n");
+        return STATUS_ERROR;
+    }
+
+    if (read(fd, header, sizeof(struct dbheader_t)) != sizeof(struct dbheader_t)) {
+        perror("bad header read");
+        free(header);
+        return STATUS_ERROR;
+    }
+
+    // Convert header from network to host endianness
+    header->magic = ntohl(header->magic);
+    header->version = ntohs(header->version);
+    header->count = ntohs(header->count);
+    header->filesize = ntohl(header->filesize);
+
+    // Validate header
+    if (header->version != 1) {
+        printf("Bad database version. (%d)\n", header->version);
+        free(header);
+        return STATUS_ERROR;
+    }
+
+    if (header->magic != HEADER_MAGIC) {
+        printf("Invalid db magic bytes.\n");
+        free(header);
+        return STATUS_ERROR;
+    }
+
+    struct stat dbstat = {0};
+    fstat(fd, &dbstat);
+    if (header->filesize != dbstat.st_size) {
+        printf("Corrupted database file detected.\n");
+        free(header);
+        return STATUS_ERROR;
+    }
+
+    // Read employees if any exist
+    struct employee_t *employees = NULL;
+    if (header->count > 0) {
+        employees = calloc(header->count, sizeof(struct employee_t));
+        if (employees == NULL) {
+            printf("Malloc failed to create employees structure.\n");
+            free(header);
+            return STATUS_ERROR;
+        }
+
+        if (read(fd, employees, header->count * sizeof(struct employee_t)) != 
+            header->count * sizeof(struct employee_t)) {
+            printf("Failed to read employees from database.\n");
+            free(header);
+            free(employees);
+            return STATUS_ERROR;
+        }
+
+        // Convert employees from network to host endianness
+        for (int i = 0; i < header->count; i++) {
+            employees[i].hours = ntohl(employees[i].hours);
+        }
+    }
+
+    *headerOut = header;
+    *employeesOut = employees;
+    return STATUS_SUCCESS;
 }
 
 int create_db_header(int fd, struct dbheader_t **headerOut) {

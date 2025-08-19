@@ -90,21 +90,12 @@ int main(int argc, char *argv[]) {
             printf("Could not open database file: %s\n", filepath);
             return -1;
         }
-        if (validate_db_header(dbfd, &dbheader) == STATUS_ERROR) {
-            printf("Error validating the database file header.\n");
+        
+        // Load existing database (header + employees) in host endianness
+        if (load_database(dbfd, &dbheader, &employees) != STATUS_SUCCESS) {
+            printf("Failed to load database.\n");
             return -1;
         }
-
-        if (read_employees(dbfd, dbheader, &employees) != STATUS_SUCCESS) {
-            printf("Failed to read employees.\n");
-            return 0;
-        }
-    }
-
-    //Revalidate header and restore endianess
-    if (validate_db_header(dbfd, &dbheader) == STATUS_ERROR) {
-        printf("Error validating the database file header.\n");
-        return -1;
     }
 
     if (addstring) {
