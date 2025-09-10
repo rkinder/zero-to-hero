@@ -107,10 +107,10 @@ int main(int argc, char *argv[]) {
 		printf("Failed to realloc memory for employees\n");
 		return -1;
 	}
-
+        
         add_employee(dbheader, employees, addstring);
     }
-
+    dbheader->filesize = sizeof(struct dbheader_t) + (dbheader->count * sizeof(struct employee_t));
     // closing routine -- flush to disk
     output_file(dbfd, dbheader, employees);
     dbfd = close_db_file(dbfd);
