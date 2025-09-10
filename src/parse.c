@@ -245,6 +245,11 @@ int create_db_header(struct dbheader_t **headerOut) {
         return STATUS_ERROR;
     }
 
+    if (headerOut == NULL) {
+	printf("Header passed in was NULL\n");
+	return STATUS_ERROR;
+    }
+
     header->version = 0x1;
     header->count = 0;
     header->magic = HEADER_MAGIC;
