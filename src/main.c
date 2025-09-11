@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "common.h"
 #include "file.h"
@@ -113,6 +114,14 @@ int main(int argc, char *argv[]) {
     dbheader->filesize = sizeof(struct dbheader_t) + (dbheader->count * sizeof(struct employee_t));
     // closing routine -- flush to disk
     output_file(dbfd, dbheader, employees);
+
+    struct stat st;
+    fstat(dbfd, &st);
+    if (st.st_size != dbheader->filesize) {
+	    printf("File size mismatch after write\n");
+	    return STATUS_ERROR;
+    }
+
     dbfd = close_db_file(dbfd);
 
     return 0;
